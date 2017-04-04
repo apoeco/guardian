@@ -54,10 +54,16 @@ defmodule Guardian.Phoenix.Socket do
     quote do
       import Guardian.Phoenix.Socket
 
-      def connect(%{"guardian_token" => jwt}, socket) do
+      def connect(%{"guardian_token" => jwt} = params, socket) do
         case sign_in(socket, jwt, params, key: unquote(key)) do
-          {:ok, authed_socket, _guardian_params} -> {:ok, authed_socket}
-          _ -> :error
+          {:ok, authed_socket, %{resource: user}} ->
+            if Timex.compare(Timex.to_datetime(user.subscription_expiry), Timex.now) === 1 do
+              {:ok, authed_socket}
+            else
+              :error
+            end
+          _ ->
+            :error
         end
       end
     end
